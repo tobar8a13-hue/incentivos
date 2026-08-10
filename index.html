@@ -260,16 +260,16 @@ function computeStatus(item){
     daysLeft=daysBetween(today,end);
     if(daysLeft<0){state="dead";label="Vencido";}
     else if(daysLeft<=5){state="warn";label=daysLeft===0?"Vence hoy":"Por vencer";}
-    // barra = fracción del tiempo que le queda respecto a la duración total
+    // barra de progreso: se llena conforme avanza el tiempo (inicio a la izquierda -> fin a la derecha)
     if(daysLeft<0){
-      pct=0;
+      pct=100;                       // vencido: llegó al final
     }else if(start){
       const total=Math.max(1,daysBetween(start,end));
-      const rem=Math.max(0,Math.min(total,daysLeft));
-      pct=Math.round(rem/total*100);
+      const elapsed=Math.max(0,Math.min(total,total-daysLeft));
+      pct=Math.round(elapsed/total*100);
     }else{
       // sin fecha de inicio: guía aproximada sobre una ventana de 30 días
-      pct=Math.min(100,Math.round(daysLeft/30*100));
+      pct=100-Math.min(100,Math.round(daysLeft/30*100));
     }
   }
   return {state,label,daysLeft,pct};
