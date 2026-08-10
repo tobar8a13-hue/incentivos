@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tablero de Incentivos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   CONFIGURACIÓN — lo único que tocarás después
+   Pega la URL del CSV de tu Google Sheet en CSV_URL (más abajo).
+   Vacío = usa datos de ejemplo.
+   ============================================================ */
+:root{
+  --bg:#0E1420; --bg-soft:#141C2A; --surface:#18212F; --surface-2:#1E293B;
+  --line:rgba(255,255,255,.08); --line-strong:rgba(255,255,255,.14);
+  --ink:#F2F5F9; --ink-dim:#9AA7BC; --ink-faint:#63718A;
+  --ok:#34D39E; --warn:#F2C14E; --dead:#6B7688; --danger:#FF6B81;
+  --radius:16px; --maxw:1360px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:
+    radial-gradient(1200px 700px at 82% -12%, rgba(76,141,255,.10), transparent 60%),
+    radial-gradient(900px 600px at -8% 8%, rgba(181,123,255,.08), transparent 55%),
+    var(--bg);
+  color:var(--ink); font-family:"Instrument Sans",system-ui,sans-serif;
+  line-height:1.5; min-height:100vh; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:clamp(20px,3.5vw,44px)}
+
+/* ---------- Header ---------- */
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;margin-bottom:8px}
+.brand-eyebrow{font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:10px}
+h1{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;letter-spacing:-.02em;line-height:.98;font-size:clamp(34px,5.4vw,62px)}
+h1 .accent{background:linear-gradient(92deg,#5B9DFF,#B57BFF 55%,#34D39E);-webkit-background-clip:text;background-clip:text;color:transparent}
+.top-right{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.live{display:flex;align-items:center;gap:10px;font-family:"Space Mono",monospace;font-size:13px;color:var(--ink-dim);background:var(--surface);border:1px solid var(--line);padding:9px 14px;border-radius:999px;white-space:nowrap}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(52,211,158,.6);animation:pulse 2.4s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 8px rgba(52,211,158,0)}100%{box-shadow:0 0 0 0 rgba(52,211,158,0)}}
+.btn-screen{font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--bg);background:var(--ink);border:none;padding:9px 16px;border-radius:999px;cursor:pointer;transition:.18s}
+.btn-screen:hover{opacity:.88}
+.btn-screen:focus-visible{outline:2px solid #5B9DFF;outline-offset:2px}
+
+/* ---------- Resumen ---------- */
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:30px 0 34px}
+.stat{background:linear-gradient(180deg,var(--surface),var(--bg-soft));border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px}
+.stat .num{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:clamp(30px,4vw,44px);line-height:1}
+.stat .lbl{font-size:13px;color:var(--ink-dim);margin-top:6px}
+.stat.ok .num{color:var(--ok)} .stat.warn .num{color:var(--warn)}
+
+/* ---------- Filtro ---------- */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:30px}
+.chip{font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.05em;color:var(--ink-dim);background:var(--surface);border:1px solid var(--line);padding:8px 15px;border-radius:999px;cursor:pointer;transition:.18s;text-transform:uppercase}
+.chip:hover{border-color:var(--line-strong);color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip:focus-visible{outline:2px solid #5B9DFF;outline-offset:2px}
+
+/* ---------- Banner de programa (SPIFF / CONCURSO) ---------- */
+.program{margin-bottom:40px}
+.program-head{display:flex;align-items:baseline;gap:16px;margin-bottom:22px;padding-bottom:14px;border-bottom:2px solid var(--line-strong)}
+.program-title{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:clamp(24px,3.2vw,36px);letter-spacing:.02em}
+.program-sub{font-family:"Space Mono",monospace;font-size:12px;color:var(--ink-faint);letter-spacing:.06em}
+.program-count{margin-left:auto;font-family:"Space Mono",monospace;font-size:13px;color:var(--ink-dim)}
+.pill-spiff{color:#5B9DFF} .pill-concurso{color:#B57BFF}
+
+/* ---------- Categoría ---------- */
+.cat{margin-bottom:30px}
+.cat-head{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+.cat-tag{width:12px;height:30px;border-radius:5px;flex:none;background:var(--c,#5B9DFF);box-shadow:0 0 22px -4px var(--c,#5B9DFF)}
+.cat-name{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:clamp(17px,2.2vw,22px);letter-spacing:-.01em}
+.cat-count{font-family:"Space Mono",monospace;font-size:13px;color:var(--ink-faint)}
+.cat-line{flex:1;height:1px;background:var(--line)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+
+/* ---------- Tarjeta ---------- */
+.card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px 16px;overflow:hidden;transition:transform .2s ease,border-color .2s ease;display:flex;flex-direction:column;animation:rise .5s cubic-bezier(.2,.7,.2,1) backwards}
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--c,#5B9DFF)}
+.card:hover{transform:translateY(-3px);border-color:var(--line-strong)}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.card-cat{font-family:"Space Mono",monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px;font-weight:700}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px}
+.brandname{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:21px;letter-spacing:-.01em}
+.tipo{font-family:"Space Mono",monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin-top:3px}
+.badge{font-family:"Space Mono",monospace;font-size:11px;letter-spacing:.06em;padding:5px 10px;border-radius:999px;white-space:nowrap;flex:none;border:1px solid transparent;text-transform:uppercase;font-weight:700}
+.badge.ok{color:var(--ok);background:rgba(52,211,158,.10);border-color:rgba(52,211,158,.28)}
+.badge.warn{color:var(--warn);background:rgba(242,193,78,.10);border-color:rgba(242,193,78,.30)}
+.badge.dead{color:var(--dead);background:rgba(107,118,136,.12);border-color:rgba(107,118,136,.30)}
+.prize{display:flex;align-items:baseline;gap:8px;margin:2px 0 4px}
+.prize .amt{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:clamp(36px,5.5vw,50px);line-height:.9;letter-spacing:-.02em}
+.prize-desc{font-size:14px;color:var(--ink-dim);margin-bottom:12px}
+.card-mid{display:flex;flex-direction:column;min-height:0}
+.cond{font-size:13.5px;color:var(--ink);opacity:.9;margin-bottom:14px;padding-left:12px;border-left:2px solid var(--line-strong)}
+.formats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.fmt{font-family:"Space Mono",monospace;font-size:11px;letter-spacing:.04em;color:var(--ink-dim);background:var(--surface-2);border:1px solid var(--line);padding:4px 9px;border-radius:6px}
+.card-foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--line)}
+.dates{display:flex;justify-content:space-between;font-family:"Space Mono",monospace;font-size:11.5px;color:var(--ink-faint);margin-bottom:9px}
+.dates .end{color:var(--ink-dim)}
+.bar{height:5px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.bar > i{display:block;height:100%;border-radius:99px;background:var(--c,#5B9DFF);transition:width .6s ease}
+.timeleft{font-family:"Space Mono",monospace;font-size:11px;color:var(--ink-dim);margin-top:7px;text-align:right}
+.card.expired{opacity:.5;filter:saturate(.5)}
+.card.expired::before{background:var(--dead)}
+.card.expired .prize .amt{color:var(--ink-dim)}
+.empty{text-align:center;padding:70px 20px;color:var(--ink-faint);font-family:"Space Mono",monospace}
+footer{margin-top:20px;padding-top:20px;border-top:1px solid var(--line);color:var(--ink-faint);font-family:"Space Mono",monospace;font-size:12px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+
+/* ============================================================
+   MODO PANTALLA (KIOSCO) — rota solo, sin scroll
+   ============================================================ */
+#kiosk{position:fixed;inset:0;z-index:50;background:
+  radial-gradient(1200px 700px at 82% -12%, rgba(76,141,255,.10), transparent 60%),
+  radial-gradient(900px 600px at -8% 8%, rgba(181,123,255,.08), transparent 55%),
+  var(--bg);
+  display:none;flex-direction:column;padding:clamp(20px,3vw,40px)}
+body.kiosk-on{overflow:hidden}
+body.kiosk-on #kiosk{display:flex}
+.k-head{display:flex;align-items:baseline;gap:18px;margin-bottom:18px}
+.k-prog{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:clamp(30px,4vw,50px);letter-spacing:.02em}
+.k-sub{font-family:"Space Mono",monospace;font-size:13px;color:var(--ink-faint);letter-spacing:.08em}
+.k-idx{margin-left:auto;font-family:"Space Mono",monospace;font-size:14px;color:var(--ink-dim)}
+.k-clock{font-family:"Space Mono",monospace;font-size:14px;color:var(--ink-dim);margin-left:18px}
+#kioskBoard{flex:1;display:grid;gap:18px;transition:opacity .5s ease;min-height:0}
+#kioskBoard.fade{opacity:0}
+#kioskBoard .card{animation:none;overflow:hidden}
+/* la zona media (descripción/condición/formatos) es la única que se recorta;
+   la marca, el premio y la duración siempre quedan visibles */
+#kioskBoard .card-mid{flex:1 1 0;overflow:hidden}
+#kioskBoard .card-foot{flex:none}
+#kioskBoard .card-cat{font-size:12.5px}
+#kioskBoard .tipo{font-size:12px}
+#kioskBoard .fmt{font-size:12.5px;padding:5px 11px}
+#kioskBoard .badge{font-size:12px}
+#kioskBoard .dates,#kioskBoard .timeleft{font-size:13px}
+
+/* Una sola fila: tarjetas centradas y con tope de alto para que no se vean gigantes */
+#kioskBoard.rows-1{align-items:center}
+#kioskBoard.rows-1 .card{max-height:52vh;padding:24px 26px}
+#kioskBoard.rows-1 .brandname{font-size:27px}
+#kioskBoard.rows-1 .prize .amt{font-size:clamp(46px,4.6vw,66px)}
+#kioskBoard.rows-1 .prize-desc{font-size:16.5px}
+#kioskBoard.rows-1 .cond{font-size:15px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+
+/* Dos filas: cada tarjeta ocupa exactamente su fila (sin traslape) y algo más compacta */
+#kioskBoard.rows-2{align-items:stretch}
+#kioskBoard.rows-2 .card{padding:18px 20px}
+#kioskBoard.rows-2 .brandname{font-size:23px}
+#kioskBoard.rows-2 .prize .amt{font-size:clamp(38px,3.6vw,54px)}
+#kioskBoard.rows-2 .prize-desc{font-size:15px;margin-bottom:10px}
+#kioskBoard.rows-2 .cond{font-size:14px;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.k-bar{height:4px;background:var(--surface-2);border-radius:99px;margin-top:18px;overflow:hidden}
+.k-bar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,#5B9DFF,#34D39E)}
+.k-exit{position:absolute;top:14px;right:16px;font-family:"Space Mono",monospace;font-size:11px;color:var(--ink-faint);background:var(--surface);border:1px solid var(--line);padding:6px 12px;border-radius:999px;cursor:pointer;z-index:2}
+
+@media (max-width:640px){.summary{grid-template-columns:repeat(2,1fr)}.top{align-items:flex-start}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="brand-eyebrow">Departamento de Categorías · Fuerza de ventas</div>
+      <h1>Incentivos <span class="accent">activos</span></h1>
+    </div>
+    <div class="top-right">
+      <div class="live"><span class="dot"></span><span id="clock">—</span></div>
+      <button class="btn-screen" id="goKiosk">▶ Modo pantalla</button>
+    </div>
+  </header>
+
+  <section class="summary" id="summary"></section>
+
+  <div class="filters" id="filters">
+    <button class="chip" data-f="activos" aria-pressed="true">Vigentes</button>
+    <button class="chip" data-f="todos" aria-pressed="false">Todos</button>
+  </div>
+
+  <main id="board"><div class="empty">Cargando incentivos…</div></main>
+
+  <footer>
+    <span id="foot-updated">—</span>
+    <span id="foot-source">Datos de ejemplo</span>
+  </footer>
+</div>
+
+<!-- Overlay de modo pantalla -->
+<div id="kiosk">
+  <button class="k-exit" id="exitKiosk">✕ Salir (Esc)</button>
+  <div class="k-head">
+    <span class="k-prog" id="kProg">SPIFF</span>
+    <span class="k-sub" id="kSub">Incentivos por venta</span>
+    <span class="k-idx" id="kIdx"></span>
+    <span class="k-clock" id="kClock"></span>
+  </div>
+  <div id="kioskBoard"></div>
+  <div class="k-bar"><i id="kBarFill"></i></div>
+</div>
+
+<script>
+/* ============================================================
+   1) FUENTE DE DATOS  (Google Sheets, método a prueba de CORS)
+   ------------------------------------------------------------
+   Solo necesitas el ID de tu hoja. Puedes:
+     a) pegarlo abajo entre las comillas de SHEET_ID, o
+     b) pasarlo en la URL:  tablero.html?sheet=EL_ID_DE_TU_HOJA
+   El ID es la parte larga de la dirección de tu hoja:
+     docs.google.com/spreadsheets/d/[ESTE_ES_EL_ID]/edit
+   La hoja debe estar compartida como "Cualquiera con el enlace: Lector".
+   Si SHEET_ID queda vacío, se muestran los datos de ejemplo.
+   ============================================================ */
+const _p = new URLSearchParams(location.search);
+const SHEET_ID  = _p.get("sheet") || "";   // <-- pega aquí el ID de tu hoja
+const SHEET_GID = _p.get("gid")   || "0";  // pestaña: 0 = la primera (normalmente no se cambia)
+
+/* La PRIMERA FILA de la hoja debe tener EXACTAMENTE estos encabezados:
+   seccion | categoria | marca | formatos | tipo | premio_monto | premio_desc | condicion | fecha_inicio | fecha_fin
+   - seccion: "SPIFF" o "CONCURSO"
+   - formatos: varios separados por coma en la misma celda -> "MAX, Pro"
+   - fechas: usa el selector de fecha normal de Sheets (cualquier formato sirve)
+*/
+
+function demoDate(o){const d=new Date();d.setDate(d.getDate()+o);return d.toISOString().slice(0,10);}
+const SAMPLE = [
+  {seccion:"SPIFF",categoria:"Televisores",marca:"Samsung",formatos:"MAX, Pro",tipo:"Giftcard",premio_monto:"Q10",premio_desc:"por cada TV vendida",condicion:"QLED 55\" o mayor",fecha_inicio:demoDate(-8),fecha_fin:demoDate(20)},
+  {seccion:"SPIFF",categoria:"Televisores",marca:"LG",formatos:"MAX",tipo:"Bono",premio_monto:"Q15",premio_desc:"por unidad",condicion:"OLED cualquier tamaño",fecha_inicio:demoDate(-12),fecha_fin:demoDate(4)},
+  {seccion:"SPIFF",categoria:"Audio",marca:"JBL",formatos:"MAX, Express",tipo:"Giftcard",premio_monto:"Q8",premio_desc:"por barra de sonido",condicion:"Soundbars serie Bar",fecha_inicio:demoDate(-5),fecha_fin:demoDate(30)},
+  {seccion:"SPIFF",categoria:"Línea Blanca",marca:"Mabe",formatos:"MAX, Pro",tipo:"Bono",premio_monto:"Q25",premio_desc:"por refrigeradora",condicion:"Refrigeradoras No Frost",fecha_inicio:demoDate(-3),fecha_fin:demoDate(45)},
+  {seccion:"SPIFF",categoria:"Cómputo",marca:"HP",formatos:"MAX",tipo:"Giftcard",premio_monto:"Q12",premio_desc:"por laptop",condicion:"Línea Pavilion",fecha_inicio:demoDate(-40),fecha_fin:demoDate(-3)},
+  {seccion:"SPIFF",categoria:"Telefonía",marca:"Samsung",formatos:"MAX, Express",tipo:"Giftcard",premio_monto:"Q20",premio_desc:"por equipo",condicion:"Galaxy serie S",fecha_inicio:demoDate(-6),fecha_fin:demoDate(16)},
+  {seccion:"CONCURSO",categoria:"Televisores",marca:"Sony",formatos:"MAX, Pro",tipo:"Concurso",premio_monto:"Q1,000",premio_desc:"al top 1 en ventas",condicion:"Acumulado del mes en línea BRAVIA",fecha_inicio:demoDate(-6),fecha_fin:demoDate(24)},
+  {seccion:"CONCURSO",categoria:"Línea Blanca",marca:"Whirlpool",formatos:"Pro",tipo:"Rifa",premio_monto:"Bono Q500",premio_desc:"por lavadora vendida",condicion:"Cada venta = 1 número para la rifa",fecha_inicio:demoDate(-10),fecha_fin:demoDate(2)},
+  {seccion:"CONCURSO",categoria:"Telefonía",marca:"Samsung",formatos:"MAX, Express, Pro",tipo:"Concurso",premio_monto:"Viaje",premio_desc:"sorteo entre metas cumplidas",condicion:"Cumplir meta mensual de la marca",fecha_inicio:demoDate(-4),fecha_fin:demoDate(40)}
+];
+
+/* ---------- Colores por categoría ---------- */
+const CAT_COLORS={"televisores":"#5B9DFF","audio":"#B57BFF","línea blanca":"#34D39E","linea blanca":"#34D39E","cómputo":"#FF8A5C","computo":"#FF8A5C","telefonía":"#FF6B81","telefonia":"#FF6B81"};
+const FALLBACK=["#E0B341","#4FD1C5","#A78BFA","#F472B6","#60A5FA","#F59E0B"];
+const _assigned={};let _fi=0;
+function catColor(name){const k=(name||"").trim().toLowerCase();if(CAT_COLORS[k])return CAT_COLORS[k];if(!_assigned[k]){_assigned[k]=FALLBACK[_fi%FALLBACK.length];_fi++;}return _assigned[k];}
+
+/* ---------- Utilidades ---------- */
+function parseDate(s){if(!s)return null;s=String(s).trim();let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return new Date(+m[1],+m[2]-1,+m[3]);m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);if(m)return new Date(+m[3],+m[2]-1,+m[1]);const d=new Date(s);return isNaN(d)?null:d;}
+function daysBetween(a,b){return Math.round((b-a)/86400000);}
+function fmtDate(d){if(!d)return "—";return d.toLocaleDateString("es-GT",{day:"2-digit",month:"short"}).replace(".","");}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function secOf(x){return (x.seccion||"SPIFF").trim().toUpperCase()==="CONCURSO"?"CONCURSO":"SPIFF";}
+
+function computeStatus(item){
+  const today=new Date();today.setHours(0,0,0,0);
+  const start=parseDate(item.fecha_inicio),end=parseDate(item.fecha_fin);
+  let state="ok",label="Vigente",daysLeft=null,pct=100;
+  if(end){
+    daysLeft=daysBetween(today,end);
+    if(daysLeft<0){state="dead";label="Vencido";pct=0;}
+    else if(daysLeft<=5){state="warn";label=daysLeft===0?"Vence hoy":"Por vencer";}
+    if(start&&end&&daysLeft>=0){const total=Math.max(1,daysBetween(start,end));pct=Math.max(4,Math.min(100,Math.round((daysLeft/total)*100)));}
+  }
+  return {state,label,daysLeft,pct};
+}
+
+/* ---------- Lector de Google Sheets vía gviz (a prueba de CORS) ---------- */
+function gvizCell(cell){
+  if(!cell) return "";
+  const v=cell.v;
+  if(typeof v==="string"){
+    const m=v.match(/^Date\((\d+),(\d+),(\d+)/); // fechas: Date(2026,7,15) = 15 ago 2026
+    if(m){const mm=String(+m[2]+1).padStart(2,"0"),dd=String(+m[3]).padStart(2,"0");return `${m[1]}-${mm}-${dd}`;}
+  }
+  if(cell.f!=null) return String(cell.f);
+  if(v!=null) return String(v);
+  return "";
+}
+function handleGviz(resp){
+  try{
+    if(!resp||resp.status==="error"||!resp.table) throw new Error("gviz error");
+    const cols=resp.table.cols.map(c=>(c.label||"").trim().toLowerCase());
+    ALL=resp.table.rows.map(r=>{
+      const o={}; (r.c||[]).forEach((cell,i)=>{ if(cols[i]) o[cols[i]]=gvizCell(cell); });
+      return o;
+    }).filter(o=>Object.values(o).some(v=>String(v).trim()!==""));
+    document.getElementById("foot-source").textContent="Fuente: Google Sheets";
+  }catch(e){
+    ALL=SAMPLE;
+    document.getElementById("foot-source").textContent="No se pudo leer la hoja (revisa el ID y que esté compartida) — datos de ejemplo";
+  }
+  afterLoad();
+}
+window.__gvizCb=handleGviz;
+
+/* ---------- Tarjeta ---------- */
+function cardHTML(x,showCat,delay){
+  const c=catColor(x.categoria),st=x._st;
+  const fmts=(x.formatos||"").split(",").map(f=>f.trim()).filter(Boolean);
+  return `<article class="card ${st.state==="dead"?"expired":""}" style="--c:${c};animation-delay:${delay||0}ms">
+    ${showCat?`<div class="card-cat" style="color:${c}">${esc(x.categoria||"")}</div>`:""}
+    <div class="card-top">
+      <div><div class="brandname">${esc(x.marca||"—")}</div><div class="tipo">${esc(x.tipo||"Incentivo")}</div></div>
+      <span class="badge ${st.state}">${st.label}</span>
+    </div>
+    <div class="prize"><span class="amt">${esc(x.premio_monto||"")}</span></div>
+    <div class="card-mid">
+      <div class="prize-desc">${esc(x.premio_desc||"")}</div>
+      ${x.condicion?`<div class="cond">${esc(x.condicion)}</div>`:""}
+      ${fmts.length?`<div class="formats">${fmts.map(f=>`<span class="fmt">${esc(f)}</span>`).join("")}</div>`:""}
+    </div>
+    <div class="card-foot">
+      <div class="dates"><span>${fmtDate(parseDate(x.fecha_inicio))}</span><span class="end">→ ${fmtDate(parseDate(x.fecha_fin))}</span></div>
+      <div class="bar"><i style="width:${st.pct}%"></i></div>
+      <div class="timeleft">${st.daysLeft===null?"":st.daysLeft<0?"Finalizado":st.daysLeft===0?"Último día":`${st.daysLeft} días restantes`}</div>
+    </div>
+  </article>`;
+}
+
+const SEC_META={SPIFF:{sub:"Incentivos por venta"},CONCURSO:{sub:"Concursos y rifas"}};
+let ALL=[],filter="activos";
+
+function enrich(){return ALL.map(x=>({...x,_st:computeStatus(x)}));}
+function applyFilter(list){return filter==="activos"?list.filter(x=>x._st.state!=="dead"):list;}
+
+/* ---------- Vista normal ---------- */
+function renderNormal(){
+  const board=document.getElementById("board");
+  const enriched=enrich();
+  const view=applyFilter(enriched);
+
+  const act=enriched.filter(x=>x._st.state==="ok").length;
+  const warn=enriched.filter(x=>x._st.state==="warn").length;
+  const marcas=new Set(enriched.filter(x=>x._st.state!=="dead").map(x=>x.marca)).size;
+  document.getElementById("summary").innerHTML=`
+    <div class="stat ok"><div class="num">${act}</div><div class="lbl">Vigentes</div></div>
+    <div class="stat warn"><div class="num">${warn}</div><div class="lbl">Por vencer (≤5 días)</div></div>
+    <div class="stat"><div class="num">${marcas}</div><div class="lbl">Marcas participando</div></div>
+    <div class="stat"><div class="num">${enriched.length}</div><div class="lbl">Incentivos totales</div></div>`;
+
+  if(view.length===0){board.innerHTML=`<div class="empty">No hay incentivos para mostrar.</div>`;return;}
+
+  let html="",delay=0;
+  ["SPIFF","CONCURSO"].forEach(sec=>{
+    const secItems=view.filter(x=>secOf(x)===sec);
+    if(!secItems.length)return;
+    html+=`<section class="program">
+      <div class="program-head">
+        <span class="program-title pill-${sec.toLowerCase()}">${sec}</span>
+        <span class="program-sub">${SEC_META[sec].sub}</span>
+        <span class="program-count">${secItems.length} incentivos</span>
+      </div>`;
+    const cats={};secItems.forEach(x=>{const k=x.categoria||"Sin categoría";(cats[k]=cats[k]||[]).push(x);});
+    Object.keys(cats).sort().forEach(cat=>{
+      const c=catColor(cat);
+      html+=`<div class="cat"><div class="cat-head">
+        <span class="cat-tag" style="--c:${c}"></span>
+        <span class="cat-name">${esc(cat)}</span>
+        <span class="cat-count">${cats[cat].length}</span>
+        <span class="cat-line"></span></div><div class="grid">`;
+      cats[cat].forEach(x=>{html+=cardHTML(x,false,delay);delay+=40;});
+      html+=`</div></div>`;
+    });
+    html+=`</section>`;
+  });
+  board.innerHTML=html;
+}
+
+/* ============================================================
+   MODO PANTALLA (KIOSCO)
+   ============================================================ */
+let kSlides=[],kCur=0,kTimer=null,kAnim=null;
+const SLIDE_MS=12000;
+
+const KIOSK_ROWS=2;      // objetivo de filas por pantalla
+const KIOSK_MIN_CARD=430; // ancho mínimo de tarjeta (px) para que se vea grande en 40"
+function buildSlides(){
+  // en kiosco siempre mostramos solo vigentes
+  const view=enrich().filter(x=>x._st.state!=="dead");
+  const maxcols=Math.max(1,Math.min(4,Math.floor(window.innerWidth/KIOSK_MIN_CARD)));
+  const per=Math.max(1,maxcols*KIOSK_ROWS); // hasta 2 filas por diapositiva
+  kSlides=[];
+  ["SPIFF","CONCURSO"].forEach(sec=>{
+    const arr=view.filter(x=>secOf(x)===sec);
+    if(!arr.length)return;
+    arr.sort((a,b)=>(a.categoria||"").localeCompare(b.categoria||""));
+    for(let i=0;i<arr.length;i+=per)kSlides.push({sec,maxcols,items:arr.slice(i,i+per)});
+  });
+  if(kCur>=kSlides.length)kCur=0;
+}
+
+function showSlide(i){
+  if(!kSlides.length){document.getElementById("kioskBoard").innerHTML=`<div class="empty">No hay incentivos vigentes.</div>`;return;}
+  kCur=(i+kSlides.length)%kSlides.length;
+  const s=kSlides[kCur];
+  const secSlides=kSlides.filter(z=>z.sec===s.sec);
+  const posInSec=secSlides.indexOf(s)+1;
+  document.getElementById("kProg").textContent=s.sec;
+  document.getElementById("kProg").className="k-prog pill-"+s.sec.toLowerCase();
+  document.getElementById("kSub").textContent=SEC_META[s.sec].sub;
+  document.getElementById("kIdx").textContent=secSlides.length>1?`${posInSec} / ${secSlides.length}`:"";
+  const kb=document.getElementById("kioskBoard");
+  // reparte en hasta 2 filas y balancea las columnas para que no queden huecos feos
+  const n=s.items.length;
+  const rowsUsed=n<=s.maxcols?1:2;
+  const colsUsed=Math.max(1,Math.ceil(n/rowsUsed));
+  kb.classList.toggle("rows-2",rowsUsed===2);
+  kb.classList.toggle("rows-1",rowsUsed===1);
+  kb.style.gridTemplateColumns=`repeat(${colsUsed},1fr)`;
+  kb.style.gridTemplateRows=`repeat(${rowsUsed},1fr)`;
+  kb.innerHTML=s.items.map(x=>cardHTML(x,true,0)).join("");
+  // barra de progreso del temporizador
+  const fill=document.getElementById("kBarFill");
+  fill.style.transition="none";fill.style.width="0%";
+  requestAnimationFrame(()=>{fill.style.transition=`width ${SLIDE_MS}ms linear`;fill.style.width="100%";});
+}
+
+function nextSlide(){
+  const kb=document.getElementById("kioskBoard");
+  kb.classList.add("fade");
+  setTimeout(()=>{showSlide(kCur+1);kb.classList.remove("fade");},500);
+}
+
+function startKiosk(){
+  document.body.classList.add("kiosk-on");
+  buildSlides();kCur=0;showSlide(0);
+  clearInterval(kTimer);kTimer=setInterval(nextSlide,SLIDE_MS);
+  if(document.documentElement.requestFullscreen){document.documentElement.requestFullscreen().catch(()=>{});}
+}
+function stopKiosk(){
+  document.body.classList.remove("kiosk-on");
+  clearInterval(kTimer);kTimer=null;
+  if(document.fullscreenElement&&document.exitFullscreen){document.exitFullscreen().catch(()=>{});}
+}
+
+/* ---------- Reloj ---------- */
+function tick(){
+  const now=new Date();
+  const t=now.toLocaleDateString("es-GT",{weekday:"long",day:"numeric",month:"long"})+" · "+now.toLocaleTimeString("es-GT",{hour:"2-digit",minute:"2-digit"});
+  document.getElementById("clock").textContent=t;
+  const kc=document.getElementById("kClock");if(kc)kc.textContent=now.toLocaleTimeString("es-GT",{hour:"2-digit",minute:"2-digit"});
+}
+
+/* ---------- Carga ---------- */
+function afterLoad(){
+  document.getElementById("foot-updated").textContent="Actualizado: "+new Date().toLocaleTimeString("es-GT",{hour:"2-digit",minute:"2-digit"});
+  renderNormal();
+  if(document.body.classList.contains("kiosk-on")){buildSlides();showSlide(kCur);}
+}
+function load(){
+  if(SHEET_ID){
+    const url=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:__gvizCb&headers=1&gid=${SHEET_GID}&_=${Date.now()}`;
+    const s=document.createElement("script");
+    s.src=url;
+    s.onerror=()=>{ALL=SAMPLE;document.getElementById("foot-source").textContent="Sin conexión con Google — datos de ejemplo";afterLoad();};
+    document.body.appendChild(s);
+    setTimeout(()=>{s.remove();},9000);
+  }else{
+    ALL=SAMPLE;
+    document.getElementById("foot-source").textContent="Datos de ejemplo (aún sin conectar la hoja)";
+    afterLoad();
+  }
+}
+
+/* ---------- Eventos ---------- */
+document.getElementById("filters").addEventListener("click",e=>{
+  const b=e.target.closest(".chip");if(!b)return;
+  filter=b.dataset.f;
+  document.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",c===b));
+  renderNormal();
+});
+document.getElementById("goKiosk").addEventListener("click",startKiosk);
+document.getElementById("exitKiosk").addEventListener("click",stopKiosk);
+document.addEventListener("keydown",e=>{
+  if(!document.body.classList.contains("kiosk-on"))return;
+  if(e.key==="Escape")stopKiosk();
+  if(e.key==="ArrowRight")nextSlide();
+  if(e.key==="ArrowLeft"){const kb=document.getElementById("kioskBoard");kb.classList.add("fade");setTimeout(()=>{showSlide(kCur-1);kb.classList.remove("fade");},500);}
+});
+document.addEventListener("fullscreenchange",()=>{if(!document.fullscreenElement&&document.body.classList.contains("kiosk-on")){document.body.classList.remove("kiosk-on");clearInterval(kTimer);kTimer=null;}});
+let rz;window.addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{if(document.body.classList.contains("kiosk-on")){buildSlides();showSlide(kCur);}},300);});
+
+/* ---------- Arranque ---------- */
+tick();setInterval(tick,30000);
+load();
+setInterval(load,10*60*1000);
+// abrir directo en modo pantalla con  ...tablero.html?kiosk=1
+if(new URLSearchParams(location.search).get("kiosk")==="1"){setTimeout(startKiosk,600);}
+</script>
+</body>
+</html>
