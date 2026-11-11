@@ -61,7 +61,8 @@ h1{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:clamp(
 .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;position:relative;z-index:1}
 .brand{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:24px;letter-spacing:-.01em;line-height:1.1;word-break:break-word}
 .tipo{font-family:"Space Mono",monospace;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;opacity:.88;margin-top:4px}
-.comment{position:relative;z-index:1;font-size:14px;line-height:1.35;background:rgba(255,255,255,.17);border-radius:10px;padding:7px 10px;margin-top:12px}
+.card-mid{flex:1;display:flex;align-items:center;position:relative;z-index:1;min-height:0;padding:12px 0 4px}
+.comment{width:100%;font-size:14px;line-height:1.35;background:rgba(255,255,255,.17);border-radius:10px;padding:7px 10px}
 .pay{display:inline-flex;align-items:center;gap:6px;background:#fff;color:var(--ink);font-family:"Space Mono",monospace;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:5px 10px 5px 8px;border-radius:999px;white-space:nowrap;flex:none}
 .pay i{width:8px;height:8px;border-radius:50%;background:var(--c)}
 .foot{margin-top:auto;padding-top:14px;position:relative;z-index:1}
@@ -218,8 +219,13 @@ const BRAND_COLORS = {
   // "samsung": "#1D4ED8",
   // "lg": "#BE123C",
 };
-const PALETTE = ["#2563EB","#7C3AED","#0F766E","#E11D48","#EA580C","#15803D","#4338CA","#DB2777",
-                 "#0E7490","#B45309","#9333EA","#0369A1","#BE123C","#047857","#C2410C","#475569"];
+/* 24 colores bien distintos entre sí (todos con buen contraste para texto blanco).
+   Cada marca de la hoja recibe un color DIFERENTE; solo se repetirían si hubiera más de 24 marcas. */
+const PALETTE = [
+  "#DC2626","#1D4ED8","#15803D","#9333EA","#EA580C","#0E7490","#DB2777","#A16207",
+  "#4338CA","#047857","#BE123C","#0369A1","#C026D3","#4D7C0F","#7F1D1D","#6D28D9",
+  "#B45309","#0F766E","#1E3A8A","#86198F","#78350F","#334155","#E11D48","#57534E"
+];
 
 /* ---------- Datos de ejemplo (solo si no hay hoja conectada) ---------- */
 function demoDate(o){const d=new Date();d.setDate(d.getDate()+o);return d.toISOString().slice(0,10);}
@@ -242,9 +248,28 @@ function parseDate(s){if(!s)return null;s=String(s).trim();let m=s.match(/^(\d{4
 function daysBetween(a,b){return Math.round((b-a)/86400000);}
 function dias(n){return n===1?"1 día":`${n} días`;}
 function secOf(x){return norm(x.seccion).startsWith("concurso")?"CONCURSO":"SPIFF";}
+/* Asignación sin choques: las marcas se recorren en orden alfabético; cada una
+   intenta su color "preferido" (según su nombre) y si ya lo tomó otra marca,
+   toma el siguiente libre. Así cada marca conserva casi siempre el mismo color
+   y nunca dos marcas comparten color. */
+let BRAND_MAP={};
+function assignBrandColors(rows){
+  BRAND_MAP={};
+  const used=new Set();
+  Object.entries(BRAND_COLORS).forEach(([k,c])=>{BRAND_MAP[norm(k)]=c;used.add(c.toUpperCase());});
+  // la paleta está ordenada para que colores consecutivos sean muy distintos:
+  // las marcas (en orden alfabético) toman los colores en ese orden
+  const brands=[...new Set(rows.map(r=>norm(r.marca)).filter(Boolean))].sort();
+  const free=PALETTE.filter(c=>!used.has(c.toUpperCase()));
+  let i=0;
+  brands.forEach(k=>{
+    if(BRAND_MAP[k])return;
+    BRAND_MAP[k]=free.length?free[i%free.length]:PALETTE[i%PALETTE.length]; i++;
+  });
+}
 function brandColor(name){
   const k=norm(name);
-  if(BRAND_COLORS[k])return BRAND_COLORS[k];
+  if(BRAND_MAP[k])return BRAND_MAP[k];
   let h=0;for(const ch of k)h=(h*31+ch.charCodeAt(0))>>>0;
   return PALETTE[h%PALETTE.length];
 }
@@ -334,7 +359,7 @@ function cardHTML(x,delay){
       </div>
       ${pay?`<span class="pay" style="--c:${pay.c}"><i></i>${esc(pay.t)}</span>`:""}
     </div>
-    ${x.comentario?`<div class="comment">${esc(x.comentario)}</div>`:""}
+    <div class="card-mid">${x.comentario?`<div class="comment">${esc(x.comentario)}</div>`:""}</div>
     <div class="foot">
       ${st.pct!==null?`<div class="bar"><i style="width:${st.pct}%"></i></div>`:""}
       ${st.text?`<div class="left">${esc(st.text)}</div>`:""}
@@ -448,9 +473,27 @@ function showSlide(i){
   kb.className=rows===2?"rows-2":"rows-1";
   kb.style.gridTemplateColumns=`repeat(${cols},1fr)`;
   kb.innerHTML=s.items.map(x=>cardHTML(x,0)).join("");
+  equalizeTops(kb);
   const fill=document.getElementById("kBarFill");
   fill.style.transition="none";fill.style.width="0%";
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{fill.style.transition=`width ${SLIDE_MS}ms linear`;fill.style.width="100%";}));
+  if(kSlides.length>1){
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{fill.style.transition=`width ${SLIDE_MS}ms linear`;fill.style.width="100%";}));
+  }
+}
+/* iguala el alto de los encabezados para que el comentario quede a la misma altura en todas las tarjetas */
+function equalizeTops(kb){
+  const tops=[...kb.querySelectorAll(".card-top")];
+  tops.forEach(t=>t.style.minHeight="");
+  const h=Math.max(0,...tops.map(t=>t.getBoundingClientRect().height));
+  tops.forEach(t=>t.style.minHeight=h+"px");
+}
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{if(document.body.classList.contains("kiosk-on"))equalizeTops(document.getElementById("kioskBoard"));});
+/* rota y muestra la barra de tiempo solo si hay más de una vista */
+function scheduleRotation(){
+  clearInterval(kTimer);kTimer=null;
+  const multi=kSlides.length>1;
+  document.querySelector(".k-bar").style.visibility=multi?"visible":"hidden";
+  if(multi)kTimer=setInterval(()=>goSlide(1),SLIDE_MS);
 }
 function goSlide(d){
   const kb=document.getElementById("kioskBoard");
@@ -459,8 +502,7 @@ function goSlide(d){
 }
 function startKiosk(){
   document.body.classList.add("kiosk-on");
-  buildSlides();kCur=0;showSlide(0);
-  clearInterval(kTimer);kTimer=setInterval(()=>goSlide(1),SLIDE_MS);
+  buildSlides();kCur=0;showSlide(0);scheduleRotation();
   if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{});
 }
 function stopKiosk(){
@@ -479,9 +521,10 @@ function tick(){
 
 /* ---------- Carga de datos ---------- */
 function afterLoad(){
+  assignBrandColors(ALL);
   document.getElementById("foot-updated").textContent="Actualizado: "+new Date().toLocaleTimeString("es-GT",{hour:"2-digit",minute:"2-digit"});
   renderNormal();
-  if(document.body.classList.contains("kiosk-on")){buildSlides();showSlide(kCur);}
+  if(document.body.classList.contains("kiosk-on")){buildSlides();showSlide(kCur);scheduleRotation();}
 }
 function load(){
   if(SHEET_ID){
@@ -513,7 +556,7 @@ document.addEventListener("keydown",e=>{
 document.addEventListener("fullscreenchange",()=>{
   if(!document.fullscreenElement&&document.body.classList.contains("kiosk-on")){document.body.classList.remove("kiosk-on");clearInterval(kTimer);kTimer=null;}
 });
-let rz;window.addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{if(document.body.classList.contains("kiosk-on")){buildSlides();showSlide(kCur);}},300);});
+let rz;window.addEventListener("resize",()=>{clearTimeout(rz);rz=setTimeout(()=>{if(document.body.classList.contains("kiosk-on")){buildSlides();showSlide(kCur);scheduleRotation();}},300);});
 
 /* ---------- Arranque ---------- */
 tick();setInterval(tick,30000);
