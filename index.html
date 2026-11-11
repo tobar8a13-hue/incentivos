@@ -56,11 +56,10 @@ h1{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:clamp(
 /* ---------- Tarjeta (color según la marca) ---------- */
 .card{position:relative;background:var(--b);color:#fff;border-radius:var(--radius);padding:18px 20px 16px;display:flex;flex-direction:column;min-height:168px;overflow:hidden;
   box-shadow:0 1px 2px rgba(15,23,42,.06),0 10px 24px -14px var(--b);animation:rise .45s cubic-bezier(.2,.7,.2,1) backwards}
-.card::after{content:"";position:absolute;right:-46px;top:-46px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.08);pointer-events:none}
 @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;position:relative;z-index:1}
 .brand{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:24px;letter-spacing:-.01em;line-height:1.1;word-break:break-word}
-.cat{display:inline-block;font-family:"Space Mono",monospace;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;background:rgba(255,255,255,.2);border-radius:6px;padding:3px 8px;margin-bottom:8px}
+.cat{font-family:"Instrument Sans",sans-serif;font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;opacity:.85;border-left:3px solid rgba(255,255,255,.75);padding-left:8px;line-height:1.2;margin-bottom:8px}
 .tipo{font-family:"Space Mono",monospace;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;opacity:.88;margin-top:4px}
 .card-mid{flex:1;display:flex;align-items:center;position:relative;z-index:1;min-height:0;padding:12px 0 4px}
 .comment{width:100%;font-size:14px;line-height:1.35;background:rgba(255,255,255,.17);border-radius:10px;padding:7px 10px}
@@ -131,7 +130,7 @@ body.kiosk-on #kiosk{display:flex}
 #kioskBoard .card{animation:none;padding:24px 26px}
 #kioskBoard .brand{font-size:clamp(26px,2.2vw,36px)}
 #kioskBoard .tipo{font-size:14px}
-#kioskBoard .cat{font-size:13px;padding:4px 10px}
+#kioskBoard .cat{font-size:15px}
 #kioskBoard .comment{font-size:17px;padding:9px 12px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 #kioskBoard .pay{font-size:13px;padding:6px 12px 6px 10px}
 #kioskBoard .pay i{width:10px;height:10px}
