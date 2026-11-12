@@ -211,7 +211,7 @@ const SHEET_GID = _p.get("gid")   || "0";
 const SLIDE_MS        = 12000; // tiempo por pantalla en modo kiosco
 const KIOSK_ROWS      = 2;     // filas por pantalla
 const KIOSK_MIN_CARD  = 360;   // ancho mínimo de tarjeta en kiosco (px)
-const KIOSK_MAX_COLS  = 5;     // máximo de columnas en kiosco
+const KIOSK_MAX_COLS  = 4;     // máximo de tarjetas por fila en kiosco (máx. 8 por vista)
 const KIOSK_SHOW_PROX = false; // true = también mostrar "Próximamente" en las pantallas
 
 /* Colores por marca: cada marca recibe un color automático y siempre el mismo.
@@ -471,7 +471,8 @@ function showSlide(i){
   const prog=document.getElementById("kProg");
   prog.textContent=s.sec; prog.className="k-prog "+s.sec.toLowerCase();
   document.getElementById("kIdx").textContent=secSlides.length>1?`${secSlides.indexOf(s)+1} / ${secSlides.length}`:"";
-  const n=s.items.length, rows=n<=s.maxcols?1:2, cols=Math.ceil(n/rows);
+  // hasta 4: una sola fila. Más de 4: fila de arriba completa (4) y la de abajo se llena de izquierda a derecha
+  const n=s.items.length, rows=n<=s.maxcols?1:2, cols=rows===1?n:s.maxcols;
   kb.className=rows===2?"rows-2":"rows-1";
   kb.style.gridTemplateColumns=`repeat(${cols},1fr)`;
   kb.innerHTML=s.items.map(x=>cardHTML(x,0)).join("");
